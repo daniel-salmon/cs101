@@ -18,172 +18,105 @@ node* new_node() {
 }
 
 void binary_tree_add(binary_tree *t, int i) {
-    // Add the value to the root node if the tree
-    // doesn't have any elements yet
-    if (t->size == 0) {
-        t->root = new_node();
-        t->root->val = i;
-        t->size++;
-        return;
-    }
+    // Initialize a new node with the item's value
+    node *k = new_node();
+    k->val = i;
 
-    // If the tree does have elements, we must traverse the tree
-    // until we reach a node that is empty
-    node_add(t->root, i);
+    // Add the node into the tree
+    node_add(&t->root, k);
     t->size++;
-
-    return;
 }
 
-void node_add(node *n, int i) {
-    if (i == n->val) {
-        // The item already exists in our tree
-        // no need to add it
-        return;
-    } else if (i < n->val) {
-        // If the left node is empty,
-        // then we add a node there
-        // Otherwise, we continue traversing
-        if (!n->left) {
-            n->left = new_node();
-            n->left->val = i;
-            return;
-        } else {
-            node_add(n->left, i);
-        }
-    } else if (i > n->val) {
-        // If the right node is empty,
-        // then we add a node there
-        // Otherwise, we continue traversing
-        if (!n->right) {
-            n->right = new_node();
-            n->right->val = i;
-            return;
-        } else {
-            node_add(n->right, i);
-        }
+void node_add(node **n, node *k) {
+    if (!(*n)) {
+        *n = k;
+    } else if (k->val <= (*n)->val) {
+        node_add(&((*n)->left), k);
+    } else {
+        node_add(&((*n)->right), k);
     }
-    return;
 }
 
 void binary_tree_remove(binary_tree *t, int i) {
-    // If the tree contains no elements, there is nothing to remove
-    if (t->size == 0) {
-        return;
+    node **node_to_remove = find_node(&t->root, i);
+    if (node_to_remove) {
+        remove_node(node_to_remove);
+        t->size--;
     }
-
-    // Traverse the tree starting with the root node
-    // For any topology, we will need to keep track of the
-    // - node to be deleted (once we find it), call it A
-    // - the parent node of A
-    // - the handedness of A relative to its parent
-    // - the left / right children of A, call them B (left) and C (right)
-    // If B has a right child (D) we will need that too
-    // If B does not have a right child, but C has a left child (E) then we
-    // will use that.
-    node* parent = NULL;
-    node* a = t->root;
-    remove_node(a, parent, true, i);
-    t->size--;
 
     return;
 }
 
-void remove_node(node *a, node *parent, bool lefthanded, int i) {
-    int topology;
-
-    if (i < a->val) {
-        parent = a;
-        a = parent->left;
-        return remove_node(a, parent, true, i);
-    } else if (i > a->val) {
-        parent = a;
-        a = parent->right;
-        return remove_node(a, parent, false, i);
+node** find_node(node **n, int i) {
+    if (!(*n)) {
+        return NULL;
+    } else if (i == (*n)->val) {
+        return n;
+    } else if (i < (*n)->val) {
+        return find_node(&((*n)->left), i);
     } else {
-        // Remove the node
-        // To do so, we first determine the tree topology at this location
-        return remove(a, parent, lefthanded);
+        return find_node(&((*n)->right), i);
     }
 }
 
-void remove(node *a, node *parent, bool lefthanded) {
-    // A does not have any children
-    if (!a->left && !a->right) {
-        // Set the parent's left (right) node to NULL
-        if (lefthanded) {
-            parent->left = NULL;
-        } else {
-            parent->right = NULL;
-        }
+void remove_node(node **n) {
+    if (!(*n)->left && !(*n)->right) {
+        // The node does not have children
+        // i.e. it is a leaf at the bottom of the tree
+        free(*n);
+        *n = NULL;
+    } else if ((*n)->left && !(*n)->right) {
+        // The node has a left child, but not a right child
+        // Update the dead node to be the left child
+        node *dead = *n;
+        *n = (*n)->left;
+        free(dead);
+    } else if (!(*n)->right && (*n)->right) {
+        // The node has a right child, but not a left child
+        // Update the dead node to be the right child
+        node *dead = *n;
+        *n = (*n)->right;
+        free(dead);
+    } else {
+        // The node A has both left and right children
+        // To perform the update, we must find the node on the left branch
+        // that is the greatest lower bound (glb) to the value of A
+        // This glb node will be the largest (max) value of the left branch
+        // Once we find the glb node we need to update the dead node's value
+        // to be that of glb.
+        // Since the glb node will be the rightmost node of the left branch of
+        // A, we know that it can have only left children (if any). To prevent
+        // the loss of these children, we to shift "up" the left node pointed
+        // to by the glb node to take the glb node's place.
+        // Then we can finally free the memory occupied by the glb node object
+        node **glb = find_max(&(*n)->left);
+        (*n)->val = (*glb)->val;
 
-        free(a);
-        return;
+        // Free the glb node without losing its children
+        node *dead = *glb;
+        *glb = (*glb)->left;
+        free(dead);
     }
+}
 
-    // A has only a left child, B
-    if (a->left && !a->right) {
-        // The child B does not have a right child 
-        if (!(a->left)->right) {
-            // Update the parent node of A to point to B
-            if (lefthanded) {
-                parent->left = a->left;
-            } else {
-                parent->right = a->left;
-            }
-        } else {
-            // B does have a right child, so we pivot it "up" above B
-            // Call this right child D
-
-            // Update the parent node to point to D, B's right child 
-            // Update B's 
-            // Then update D's left child to be B
-            if (lefthanded) {
-                parent->left = (a->left)->right;
-                (parent->left)->left = a->left;
-            } else {
-                parent->right = (a->left)->right;
-                (parent->right)->left = a->left;
-            }
-        }
-
-        free(a);
-        return;
+// The maximum value of a tree is the rightmost node
+node** find_max(node **n) {
+    if (!(*n)->right) {
+        return n;
+    } else {
+        return find_max(&(*n)->right);
     }
 }
 
 bool binary_tree_contains(binary_tree *t, int i) {
-    // If the tree does not contain any elements then it can't contain item i
-    if (t->size == 0) {
-        return false;
-    }
-
     // Start at the root node and recursively determine if the
     // tree contains the value i
-    return node_contains(t->root, i);
-}
-
-bool node_contains(node *n, int i) {
-    if (i == n->val) {
+    node **n = find_node(&t->root, i);
+    if (n) {
         return true;
-    } else if (i < n->val) {
-        // Attempt to access the left child node
-        // If it is not empty, continue traversing
-        if (n->left) {
-            return node_contains(n->left, i);
-        } else {
-            return false;
-        }
-    } else if (i > n->val) {
-        // Attempt to access the right child node
-        // If it is not empty, continue traversing
-        if (n->right) {
-            return node_contains(n->right, i);
-        } else {
-            return false;
-        }
+    } else {
+        return false;
     }
-    return false;
 }
 
 int binary_tree_size(binary_tree *t) {
@@ -209,12 +142,28 @@ void binary_tree_print(binary_tree *t) {
 }
 
 void free_binary_tree(binary_tree *t) {
-    // If the tree has no elements then there is nothing to free
-    if (t->size == 0) {
+    // Free all the nodes
+    free_node(t->root);
+
+    // Free the tree
+    free(t);
+
+    return;
+}
+
+void free_node(node *n) {
+    if (!n) {
         return;
     }
 
-    // Traverse down the tree until we reach the bottom leaf nodes
-    // at which point we will remove them, sweeping our way from left to right
+    // Free everything to the left
+    free_node(n->left);
+
+    // Free everything to the right
+    free_node(n->right);
+
+    // Free the node
+    free(n);
+
     return;
 }

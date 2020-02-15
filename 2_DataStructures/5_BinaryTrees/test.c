@@ -8,15 +8,15 @@
 int main() {
     test_new_binary_tree();
     test_binary_tree_add();
-    test_binary_tree_add_multiple();
-    test_binary_tree_add_many();
-    test_binary_tree_add_many_reverse();
-    test_binary_tree_add_duplicates();
-    test_binary_tree_remove();
-    test_binary_tree_remove_multiple();
-    test_binary_tree_remove_many();
-    test_binary_tree_remove_non_existent();
-    test_binary_tree_remove_duplicates();
+//    test_binary_tree_add_multiple();
+//    test_binary_tree_add_many();
+//    test_binary_tree_add_many_reverse();
+//    test_binary_tree_add_duplicates();
+//    test_binary_tree_remove();
+//    test_binary_tree_remove_multiple();
+//    test_binary_tree_remove_many();
+//    test_binary_tree_remove_non_existent();
+//    test_binary_tree_remove_duplicates();
 }
 
 void test_new_binary_tree() {
@@ -45,6 +45,7 @@ void test_binary_tree_add() {
 
     binary_tree* a = new_binary_tree();
     binary_tree_add(a, 1);
+    binary_tree_print(a);
     if (!binary_tree_contains(a, 1)) {
         printf("Expected binary tree to contain 1 after calling binary_tree_add(1)\n");
         success = false;
@@ -167,6 +168,8 @@ void test_binary_tree_remove() {
     binary_tree *a = new_binary_tree();
     binary_tree_add(a, 1);
     binary_tree_remove(a, 1);
+    binary_tree_print(a);
+    printf("\npoop\n");
 
     if (binary_tree_contains(a, 1)) {
         printf("Expected binary tree to not contain 1 after calling binary_tree_add(1) and binary_tree_remove(1)\n");
@@ -184,7 +187,7 @@ void test_binary_tree_remove() {
 }
 
 void test_binary_tree_remove_multiple() {
-    printf("\ntest_binary_tree_remove_multiple)\n");
+    printf("\ntest_binary_tree_remove_multiple\n");
     bool success = true;
 
     binary_tree *a = new_binary_tree();
