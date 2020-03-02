@@ -302,3 +302,4 @@ void test_binary_tree_remove_duplicates() {
     }
     free_binary_tree(a);
 }
+
