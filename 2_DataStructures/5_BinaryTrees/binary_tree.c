@@ -7,115 +7,212 @@
 binary_tree* new_binary_tree() {
     // Allocate memory for a new binary tree
     binary_tree* t = (binary_tree*) malloc(sizeof(binary_tree));
+    t->root = NULL;
     t->size = 0;
     return t;
 }
 
-node* new_node() {
+node* new_node(int i) {
     node* n = (node*) malloc(sizeof(node));
-    n->val = 0;
+    n->left = NULL;
+    n->right = NULL;
+    n->val = i;
+    n->count = 1;
     return n;
 }
 
 void binary_tree_add(binary_tree *t, int i) {
-    // Initialize a new node with the item's value
-    node *k = new_node();
-    k->val = i;
-
-    // Add the node into the tree
-    node_add(&t->root, k);
+    node_add(&t->root, i);
     t->size++;
 }
 
-void node_add(node **n, node *k) {
-    if (!(*n)) {
-        *n = k;
-    } else if (k->val <= (*n)->val) {
-        node_add(&((*n)->left), k);
+void node_add(node **root, int i) {
+    if (!(*root)) {
+        *root = new_node(i);
+    } else if (i < (*root)->val) {
+        node_add(&(*root)->left, i);
+    } else if (i > (*root)->val) {
+        node_add(&(*root)->right, i);
     } else {
-        node_add(&((*n)->right), k);
+        // The value already exists in the tree
+        (*root)->count++;
     }
 }
 
 void binary_tree_remove(binary_tree *t, int i) {
-    node **node_to_remove = find_node(&t->root, i);
-    if (node_to_remove) {
-        remove_node(node_to_remove);
+    node *d = NULL;
+    d = find_node(t->root, i);
+    if (d) {
+        d->count--;
         t->size--;
-    }
-
-    return;
-}
-
-node** find_node(node **n, int i) {
-    if (!(*n)) {
-        return NULL;
-    } else if (i == (*n)->val) {
-        return n;
-    } else if (i < (*n)->val) {
-        return find_node(&((*n)->left), i);
-    } else {
-        return find_node(&((*n)->right), i);
+        if (d->count == 0) {
+            node_remove(&d);
+        }
+        if (t->size == 0) {
+            t->root = NULL;
+        }
     }
 }
 
-void remove_node(node **n) {
-    if (!(*n)->left && !(*n)->right) {
-        // The node does not have children
-        // i.e. it is a leaf at the bottom of the tree
-        free(*n);
-        *n = NULL;
-    } else if ((*n)->left && !(*n)->right) {
-        // The node has a left child, but not a right child
-        // Update the dead node to be the left child
-        node *dead = *n;
-        *n = (*n)->left;
-        free(dead);
-    } else if (!(*n)->right && (*n)->right) {
-        // The node has a right child, but not a left child
-        // Update the dead node to be the right child
-        node *dead = *n;
-        *n = (*n)->right;
-        free(dead);
-    } else {
-        // The node A has both left and right children
-        // To perform the update, we must find the node on the left branch
-        // that is the greatest lower bound (glb) to the value of A
-        // This glb node will be the largest (max) value of the left branch
-        // Once we find the glb node we need to update the dead node's value
-        // to be that of glb.
-        // Since the glb node will be the rightmost node of the left branch of
-        // A, we know that it can have only left children (if any). To prevent
-        // the loss of these children, we to shift "up" the left node pointed
-        // to by the glb node to take the glb node's place.
-        // Then we can finally free the memory occupied by the glb node object
-        node **glb = find_max(&(*n)->left);
-        (*n)->val = (*glb)->val;
+// TODO: Reduce boilerplate, perhaps adding an auxillary method to help detect
+// predecessors / successors
+void node_remove(node **d) {
+    if (!(*d)->left && !(*d)->right) {
+        // The node is a leaf, i.e. it has no descendants
+        free(*d);
+    } else if ((*d)->left && !(*d)->right) {
+        // The node has a left child but not a right child
+        if (((*d)->left)->right) {
+            // d has a nearest predecessor (greatest lower bound (glb))
+            
+            // Find the parent of the max-value node (glb) in d's left branch
+            node **glb_parent = find_max_parent(&(*d)->left);
+            node *glb = (*glb_parent)->right;
 
-        // Free the glb node without losing its children
-        node *dead = *glb;
-        *glb = (*glb)->left;
-        free(dead);
-    }
-}
+            // Update glb parent's (right) reference to point to glb's (left) child
+            (*glb_parent)->right = glb->left;
 
-// The maximum value of a tree is the rightmost node
-node** find_max(node **n) {
-    if (!(*n)->right) {
-        return n;
+            // Update d's values to be those of glb
+            (*d)->val = glb->val;
+            (*d)->count = glb->count;
+
+            // Free glb now that it has been "pivoted up" to d's position
+            free(glb);
+        } else {
+            // d has a left child, but this left child has values that are only
+            // strictly less than it
+            node *tmp = (*d)->left;
+
+            // Update d's (left) reference to point to tmp's (left) child
+            (*d)->left = tmp->left;
+
+            // Update d's values to be those of tmp
+            (*d)->val = tmp->val;
+            (*d)->count = tmp->count;
+
+            // Free tmp
+            free(tmp);
+        }
+    } else if (!(*d)->left && (*d)->right) {
+        // The node has a right child but not a left child
+        if (((*d)->right)->left) {
+            // d has a nearest successor (least upper bound (lub))
+
+            // Find the parent of the min-value node (lub) in d's right branch
+            node **lub_parent = find_min_parent(&(*d)->right);
+            node *lub = (*lub_parent)->left;
+
+            // Update lub parent's (left) reference to point to lub's (right)
+            // child
+            (*lub_parent)->left = lub->right;
+
+            // Update d's values to be those of lub
+            (*d)->val = lub->val;
+            (*d)->count = lub->count;
+
+            // Free lub now that it has been "pivoted up" to d's position
+            free(lub);
+        } else {
+            // d has a right child, but this right child has values that are
+            // only strictly greater than it
+            node *tmp = (*d)->right;
+
+            // Update d's (right) reference to point to tmp's (right) child
+            (*d)->right = tmp->right;
+
+            // Update d's values to be those of tmp
+            (*d)->val = tmp->val;
+            (*d)->count = tmp->count;
+
+            // Free tmp
+            free(tmp);
+        }
     } else {
-        return find_max(&(*n)->right);
+        // The node has both left and right children
+        if (((*d)->left)->right) {
+            // d has a nearest predecessor (greatest lower bound (glb))
+            
+            // Find the parent of the max-value node (glb) in d's left branch
+            node **glb_parent = find_max_parent(&(*d)->left);
+            node *glb = (*glb_parent)->right;
+
+            // Update glb parent's (right) reference to point to glb's (left) child
+            (*glb_parent)->right = glb->left;
+
+            // Update d's values to be those of glb
+            (*d)->val = glb->val;
+            (*d)->count = glb->count;
+
+            // Free glb now that it has been "pivoted up" to d's position
+            free(glb);
+        } else if (((*d)->right)->left) {
+            // d has a nearest successor (least upper bound (lub))
+
+            // Find the parent of the min-value node (lub) in d's right branch
+            node **lub_parent = find_min_parent(&(*d)->right);
+            node *lub = (*lub_parent)->left;
+
+            // Update lub parent's (left) reference to point to lub's (right)
+            // child
+            (*lub_parent)->left = lub->right;
+
+            // Update d's values to be those of lub
+            (*d)->val = lub->val;
+            (*d)->count = lub->count;
+
+            // Free lub now that it has been "pivoted up" to d's position
+            free(lub);
+        } else {
+            // d has neither a nearest predecessor nor successor
+            // Just swap in the left child
+            node *tmp = (*d)->left;
+
+            // Update d's (left) reference to point to tmp's (left) child
+            (*d)->left = tmp->left;
+
+            // Update d's values to be those of tmp
+            (*d)->val = tmp->val;
+            (*d)->count = tmp->count;
+
+            // Free tmp
+            free(tmp);
+        }
     }
 }
 
 bool binary_tree_contains(binary_tree *t, int i) {
-    // Start at the root node and recursively determine if the
-    // tree contains the value i
-    node **n = find_node(&t->root, i);
-    if (n) {
+    if (find_node(t->root, i)) {
         return true;
     } else {
         return false;
+    }
+}
+
+node* find_node(node *root, int i) {
+    if (!root) {
+        return NULL;
+    } else if (i == root->val) {
+        return root;
+    } else if (i < root->val) {
+        return find_node(root->left, i);
+    } else {
+        return find_node(root->right, i);
+    }
+}
+
+node** find_max_parent(node **root) {
+    if (((*root)->right)->right) {
+        return find_max_parent(&(*root)->right);
+    } else {
+        return root;
+    }
+}
+
+node** find_min_parent(node **root) {
+    if (((*root)->left)->left) {
+        return find_min_parent(&(*root)->left);
+    } else {
+        return root;
     }
 }
 
@@ -125,45 +222,32 @@ int binary_tree_size(binary_tree *t) {
 
 void print_node(node *n) {
     printf("( ");
-    if (n->left) {
+    if (n->left != NULL) {
         print_node(n->left);
     }
     printf("%d ", n->val);
-    if (n->right) {
+    if (n->right != NULL) {
         print_node(n->right);
     }
     printf(" )");
 }
 
 void binary_tree_print(binary_tree *t) {
-    if (t->root) {
+    if (t->root != NULL) {
         print_node(t->root);
     }
 }
 
 void free_binary_tree(binary_tree *t) {
-    // Free all the nodes
     free_node(t->root);
-
-    // Free the tree
     free(t);
-
-    return;
 }
 
-void free_node(node *n) {
-    if (!n) {
+void free_node(node *root) {
+    if (!root) {
         return;
     }
-
-    // Free everything to the left
-    free_node(n->left);
-
-    // Free everything to the right
-    free_node(n->right);
-
-    // Free the node
-    free(n);
-
-    return;
+    free_node(root->left);
+    free_node(root->right);
+    free(root);
 }

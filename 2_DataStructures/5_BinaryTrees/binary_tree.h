@@ -7,6 +7,7 @@ typedef struct node {
     struct node* left;
     struct node* right;
     int val;
+    int count;
 } node;
 
 // binary_tree represents a binary search tree.
@@ -19,28 +20,36 @@ typedef struct {
 // its fields.
 binary_tree* new_binary_tree() ;
 
+// new_node allocates memory for a new node and initializes its fields
+node* new_node(int i);
+
 // binary_tree_add inserts an item into the binary tree.
 void binary_tree_add(binary_tree *t, int i);
 
-// node_add adds the item i to left / right child node to the given node
-// The function is recursively called as it traverses the tree.
-void node_add(node **n, node *k);
+// node_add inserts a new node into the tree of which root is a member
+void node_add(node **root, int i);
 
 // binary_tree_remove deletes an item from the binary tree.
 void binary_tree_remove(binary_tree *t, int i);
 
-// find_node returns a pointer to the pointer to the node in our tree that contains the value i
-node** find_node(node **n, int i);
-
-// remove_node removes the node at the given node pointer
-void remove_node(node **n);
-
-// find_max returns the largest value in a tree of nodes whose root is **n
-node** find_max(node **n);
+// node_remove deletes the given node from the tree
+void node_remove(node **d);
 
 // binary_tree_contains returns true if the given item exists in the binary
 // tree, and false otherwise.
 bool binary_tree_contains(binary_tree *t, int i);
+
+// find_node returns a pointer to the node in the tree that has the value i
+// if no such node exists, find_node returns NULL. find_node recursively traverses the tree
+node* find_node(node *root, int i);
+
+// find_max_parent returns a (pointer-to-a-pointer-to the) parent node of the node
+// that has the largest value in a subtree
+node** find_max_parent(node **root);
+
+// find_min_parent returns a (pointer-to-a-pointer-to the) parent node of the node
+// that has the smallest value in a subtree
+node** find_min_parent(node **root);
 
 // binary_tree_size returns the number of items currently in the binary tree.
 int binary_tree_size(binary_tree *t);
@@ -52,9 +61,8 @@ void binary_tree_print(binary_tree *t);
 // nodes of the tree, as well as the binary tree header struct)
 void free_binary_tree(binary_tree *t);
 
-// free_node frees the memory allocated for the node, first recursively
-// freeing memory of all child nodes. Once the function hits a childless
-// node, i.e. a leaf node at the bottom of the tree, it frees that leaf and returns
-void free_node(node *n);
+// free_node frees the memory allocated for the node,
+// recursively freeing memory for all child nodes below it
+void free_node(node *root);
 
 #endif
